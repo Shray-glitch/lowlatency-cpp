@@ -292,3 +292,49 @@ if(BUILD_TESTING)
     )
 
 endif()
+
+
+
+# ============================================================
+# SPSC lock-free queue test
+# ============================================================
+
+if(BUILD_TESTING)
+
+    add_executable(
+        lf_queue_test
+        tests/lf_queue_test.cpp
+    )
+
+    target_include_directories(
+        lf_queue_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        lf_queue_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    # The test runs one producer and one consumer thread.
+    target_link_libraries(
+        lf_queue_test
+        PRIVATE
+            Threads::Threads
+    )
+
+    add_test(
+        NAME lf_queue_test
+        COMMAND lf_queue_test
+    )
+
+    # Stop the test if a queue bug leaves a thread waiting forever.
+    set_tests_properties(
+        lf_queue_test
+        PROPERTIES
+            TIMEOUT 10
+    )
+
+endif()
