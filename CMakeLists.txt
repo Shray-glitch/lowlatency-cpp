@@ -477,3 +477,51 @@ if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     )
 
 endif()
+
+
+
+# ============================================================
+# Buffered TCP socket test
+# ============================================================
+
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    add_executable(
+        tcp_socket_test
+        tests/tcp_socket_test.cpp
+        src/tcp_socket.cpp
+        src/socket_utils.cpp
+        src/logger.cpp
+    )
+
+    target_include_directories(
+        tcp_socket_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        tcp_socket_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    # The socket test uses a local socket pair and Logger uses a thread.
+    target_link_libraries(
+        tcp_socket_test
+        PRIVATE
+            Threads::Threads
+    )
+
+    add_test(
+        NAME tcp_socket_test
+        COMMAND tcp_socket_test
+    )
+
+    set_tests_properties(
+        tcp_socket_test
+        PROPERTIES
+            TIMEOUT 10
+    )
+
+endif()

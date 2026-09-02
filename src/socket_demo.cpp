@@ -69,10 +69,17 @@ int main()
 
             // TCPSocket::send() only copies the data into
             // the socket's outgoing buffer.
-            socket->send(
-                reply.data(),
-                reply.size()
-            );
+            // Queue the reply only if it fits in the fixed send buffer.
+            if (!socket->send(
+                    reply.data(),
+                    reply.size()
+                ))
+            {
+                logger.log(
+                    "SERVER send buffer full socket:%\n",
+                    socket->fd_
+                );
+            }
         };
 
 
@@ -273,10 +280,18 @@ int main()
 
 
         // Copies into TCPSocket's outgoing buffer.
-        clients[i]->send(
-            message.data(),
-            message.size()
-        );
+        if (!clients[i]->send(
+                message.data(),
+                message.size()
+            ))
+        {
+            std::cerr
+                << "Client send buffer is full for client "
+                << i
+                << '\n';
+
+            return 1;
+        }
 
 
         // Actually attempts to write the buffered bytes
