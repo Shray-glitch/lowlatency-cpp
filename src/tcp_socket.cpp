@@ -97,9 +97,7 @@ int TCPSocket::connect(
         false,          // TCP, not UDP
         false,          // non-blocking
         is_listening,
-
-        0,              // TTL not needed for this TCP socket
-        true            // enable SO_TIMESTAMP
+        true            // enable kernel receive timestamps
     );
 
 

@@ -430,3 +430,50 @@ if(BUILD_TESTING)
     )
 
 endif()
+
+
+
+# ============================================================
+# Low-level socket utility test
+# ============================================================
+
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    add_executable(
+        socket_utils_test
+        tests/socket_utils_test.cpp
+        src/socket_utils.cpp
+        src/logger.cpp
+    )
+
+    target_include_directories(
+        socket_utils_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        socket_utils_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    # socket_utils uses Linux sockets, and Logger uses a background thread.
+    target_link_libraries(
+        socket_utils_test
+        PRIVATE
+            Threads::Threads
+    )
+
+    add_test(
+        NAME socket_utils_test
+        COMMAND socket_utils_test
+    )
+
+    set_tests_properties(
+        socket_utils_test
+        PROPERTIES
+            TIMEOUT 10
+    )
+
+endif()
