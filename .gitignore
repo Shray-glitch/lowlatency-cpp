@@ -1,0 +1,32 @@
+# Build files
+build/
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+Makefile
+
+# Compiled files
+*.o
+*.obj
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Debug files
+*.pdb
+
+# VS Code local config
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Runtime-generated logs
+*.log
+
+# Local scaffolding script
+init_cpp.sh
