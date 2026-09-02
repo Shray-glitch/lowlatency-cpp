@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cstddef>
+#include <memory>
 #include <new>
 #include <utility>
 #include <vector>
@@ -14,13 +15,15 @@ private:
 
     struct ObjectBlock
     {
-        T object_;
+        // Reserve correctly aligned memory without constructing T yet.
+        alignas(T) std::byte storage_[sizeof(T)];
         bool is_free_ = true;
     };
 
     std::vector<ObjectBlock> store_;
 
     std::size_t next_free_index_ = 0;
+    std::size_t num_free_ = 0;
 
 
     void updateNextFreeIndex()
@@ -41,22 +44,35 @@ private:
 
         } while (next_free_index_ != start);
 
-        assert(false && "Memory pool is full");
+        // allocate() calls this only when num_free_ is non-zero.
+        assert(false && "No free block found");
     }
 
 
 public:
 
     explicit MemPool(std::size_t num_elems)
-        : store_(num_elems)
+        : store_(num_elems),
+          num_free_(num_elems)
     {
         assert(num_elems > 0);
+    }
 
-        assert(
-            reinterpret_cast<const ObjectBlock*>(
-                &store_[0].object_
-            ) == &store_[0]
-        );
+
+    ~MemPool()
+    {
+        // Destroy objects that were not explicitly deallocated.
+        for (ObjectBlock& block : store_)
+        {
+            if (!block.is_free_)
+            {
+                T* object = std::launder(
+                    reinterpret_cast<T*>(block.storage_)
+                );
+
+                std::destroy_at(object);
+            }
+        }
     }
 
 
@@ -69,39 +85,64 @@ public:
     template<typename... Args>
     T* allocate(Args&&... args)
     {
+        if (num_free_ == 0) {
+            return nullptr;
+        }
+
         ObjectBlock& block =
             store_[next_free_index_];
 
         assert(block.is_free_);
 
         T* object =
-            new (&block.object_)
+            new (block.storage_)
                 T(std::forward<Args>(args)...);
 
         block.is_free_ = false;
+        --num_free_;
 
-        updateNextFreeIndex();
+        if (num_free_ > 0) {
+            updateNextFreeIndex();
+        }
 
         return object;
     }
 
-    void deallocate(const T* elem) noexcept
+
+    bool deallocate(T* elem) noexcept
     {
-        const auto elem_index =
-            reinterpret_cast<const ObjectBlock*>(elem)
-            - &store_[0];
+        if (elem == nullptr) {
+            return false;
+        }
 
-        assert(
-            elem_index >= 0 &&
-            static_cast<std::size_t>(elem_index) < store_.size()
-        );
+        // Find the block whose storage begins at elem's address.
+        std::size_t elem_index = store_.size();
 
-        assert(
-            !store_[elem_index].is_free_
-        );
+        for (std::size_t i = 0; i < store_.size(); ++i)
+        {
+            if (static_cast<void*>(store_[i].storage_) ==
+                static_cast<void*>(elem))
+            {
+                elem_index = i;
+                break;
+            }
+        }
+
+        if (elem_index == store_.size() ||
+            store_[elem_index].is_free_)
+        {
+            return false;
+        }
+
+        std::destroy_at(elem);
 
         store_[elem_index].is_free_ = true;
-    }
+        ++num_free_;
 
+        // Reuse the newly freed block on the next allocation.
+        next_free_index_ = elem_index;
+
+        return true;
+    }
 
 };
