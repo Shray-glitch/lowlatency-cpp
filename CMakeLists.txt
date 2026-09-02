@@ -259,3 +259,36 @@ else()
     endif()
 
 endif()
+
+
+# ============================================================
+# Memory pool test
+# ============================================================
+
+include(CTest)
+
+if(BUILD_TESTING)
+
+    add_executable(
+        memory_pool_test
+        tests/memory_pool_test.cpp
+    )
+
+    target_include_directories(
+        memory_pool_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        memory_pool_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    add_test(
+        NAME memory_pool_test
+        COMMAND memory_pool_test
+    )
+
+endif()
