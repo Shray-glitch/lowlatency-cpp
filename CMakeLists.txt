@@ -575,3 +575,48 @@ if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     )
 
 endif()
+
+
+
+# ============================================================
+# Time utility test
+# ============================================================
+
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    add_executable(
+        time_utils_test
+        tests/time_utils_test.cpp
+    )
+
+    target_include_directories(
+        time_utils_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        time_utils_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    # The test briefly sleeps while checking monotonic elapsed time.
+    target_link_libraries(
+        time_utils_test
+        PRIVATE
+            Threads::Threads
+    )
+
+    add_test(
+        NAME time_utils_test
+        COMMAND time_utils_test
+    )
+
+    set_tests_properties(
+        time_utils_test
+        PROPERTIES
+            TIMEOUT 10
+    )
+
+endif()
