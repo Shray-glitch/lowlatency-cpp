@@ -338,3 +338,50 @@ if(BUILD_TESTING)
     )
 
 endif()
+
+
+
+# ============================================================
+# Asynchronous logger test
+# ============================================================
+
+if(BUILD_TESTING)
+
+    add_executable(
+        logger_test
+        tests/logger_test.cpp
+        src/logger.cpp
+    )
+
+    target_include_directories(
+        logger_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        logger_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    # The logger writes queued values on a background thread.
+    target_link_libraries(
+        logger_test
+        PRIVATE
+            Threads::Threads
+    )
+
+    add_test(
+        NAME logger_test
+        COMMAND logger_test
+    )
+
+    # Stop the test if a logger bug leaves a thread waiting forever.
+    set_tests_properties(
+        logger_test
+        PROPERTIES
+            TIMEOUT 10
+    )
+
+endif()

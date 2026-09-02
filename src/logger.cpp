@@ -12,6 +12,7 @@ Logger::Logger(
     : file_name_(file_name),
       queue_(LOG_QUEUE_SIZE)
 {
+    // Open the file before starting the background thread.
     file_.open(file_name_);
 
     if (!file_.is_open())
@@ -22,6 +23,7 @@ Logger::Logger(
     }
 
 
+    // This thread consumes queued values and writes them to the file.
     logger_thread_ =
         createAndStartThread(
             -1,
@@ -35,8 +37,7 @@ Logger::Logger(
 
 Logger::~Logger()
 {
-    // Wait until the logger thread consumes
-    // everything that was queued.
+    // Wait until every queued value has been written.
     while (queue_.size() != 0)
     {
         std::this_thread::sleep_for(
@@ -49,13 +50,14 @@ Logger::~Logger()
     running_ = false;
 
 
-    // Wait until flushQueue() has actually returned.
+    // Wait until flushQueue() has returned.
     if (logger_thread_.joinable())
     {
         logger_thread_.join();
     }
 
 
+    // Closing the stream also flushes its internal file buffer.
     file_.close();
 }
 
@@ -68,9 +70,10 @@ void Logger::flushQueue() noexcept
             queue_.getNextToRead();
 
 
-        // Drain everything currently available.
+        // Write everything currently available in the queue.
         while (next != nullptr)
         {
+            // type_ tells us which union member contains the value.
             switch (next->type_)
             {
                 case LogType::CHAR:
@@ -119,6 +122,7 @@ void Logger::flushQueue() noexcept
             }
 
 
+            // Release this queue slot after writing its value.
             queue_.updateReadIndex();
 
             next =
@@ -126,7 +130,7 @@ void Logger::flushQueue() noexcept
         }
 
 
-        // No work currently available.
+        // Avoid using an entire CPU core while no logs are waiting.
         std::this_thread::sleep_for(
             std::chrono::milliseconds(1)
         );
@@ -138,15 +142,23 @@ void Logger::pushValue(
     const LogElement& element
 ) noexcept
 {
-    LogElement* slot =
-        queue_.getNextToWriteTo();
+    LogElement* slot = nullptr;
+
+    // Wait if the producer has filled every queue slot.
+    // This avoids losing the log value or dereferencing nullptr.
+    while ((slot = queue_.getNextToWriteTo()) == nullptr)
+    {
+        std::this_thread::yield();
+    }
 
     *slot = element;
 
+    // Publish the completed element to the background thread.
     queue_.updateWriteIndex();
 }
 
 
+// Each overload stores the value and its matching LogType.
 void Logger::pushValue(
     char value
 ) noexcept
@@ -276,6 +288,7 @@ void Logger::pushValue(
     const char* value
 ) noexcept
 {
+    // A string is stored as a sequence of character elements.
     while (*value != '\0')
     {
         pushValue(*value);

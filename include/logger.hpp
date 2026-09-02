@@ -3,6 +3,7 @@
 #include "lf_queue.hpp"
 
 #include <atomic>
+#include <cassert>
 #include <cstddef>
 #include <cstdint>
 #include <fstream>
@@ -10,11 +11,12 @@
 #include <thread>
 
 
-// Book uses: 8 * 1024 * 1024.
-// Smaller size for our learning/demo implementation.
+// Number of values that can wait in the logger queue.
+// The book uses 8 * 1024 * 1024; this demo uses less memory.
 constexpr std::size_t LOG_QUEUE_SIZE = 64 * 1024;
 
 
+// Identifies which value inside LogElement is currently valid.
 enum class LogType : std::int8_t
 {
     CHAR = 0,
@@ -32,10 +34,13 @@ enum class LogType : std::int8_t
 };
 
 
+// One value waiting to be written to the log file.
+// Strings are divided into separate character elements.
 struct LogElement
 {
     LogType type_ = LogType::CHAR;
 
+    // Only the member selected by type_ should be read.
     union
     {
         char c;
@@ -55,32 +60,40 @@ struct LogElement
 };
 
 
+// Sends log values to a background thread that writes them to a file.
+//
+// The queue is SPSC, so exactly one application thread should call log().
+// The background logger thread is the single consumer.
 class Logger
 {
 private:
 
+    // File supplied when the logger is created.
     const std::string file_name_;
 
+    // Used only by the background thread after construction.
     std::ofstream file_;
 
+    // Passes values from the calling thread to the background thread.
     LFQueue<LogElement> queue_;
 
+    // Becomes false when the logger is being destroyed.
     std::atomic<bool> running_{true};
 
     std::thread logger_thread_;
 
 
-    // Background logger thread runs this.
+    // Read queued values and write them to the file.
     void flushQueue() noexcept;
 
 
-    // Fundamental queue insertion function.
+    // Add one complete element to the queue.
     void pushValue(
         const LogElement& element
     ) noexcept;
 
 
-    // Primitive overloads.
+    // Convert each supported number type into a LogElement.
     void pushValue(char value) noexcept;
 
     void pushValue(int value) noexcept;
@@ -95,7 +108,7 @@ private:
     void pushValue(double value) noexcept;
 
 
-    // String overloads.
+    // Add a string to the queue one character at a time.
     void pushValue(const char* value) noexcept;
     void pushValue(const std::string& value) noexcept;
 
@@ -117,6 +130,9 @@ public:
     Logger(Logger&&) = delete;
     Logger& operator=(Logger&&) = delete;
 
+
+    // Replace each single % with the next supplied value.
+    // Use %% when a real percent character is needed.
     template<typename T, typename... Args>
     void log(
         const char* s,
@@ -128,15 +144,17 @@ public:
         {
             if (*s == '%')
             {
-                // %% means: print a literal %
+                // Two percent signs produce one percent character.
                 if (*(s + 1) == '%')
                 {
                     ++s;
                 }
                 else
                 {
+                    // This percent sign uses the current argument.
                     pushValue(value);
 
+                    // Continue with the remaining arguments.
                     log(
                         s + 1,
                         args...
@@ -150,12 +168,15 @@ public:
             ++s;
         }
 
+        // Reaching the end here means an argument was not used.
         assert(
             false &&
             "Extra arguments provided to Logger::log()"
         );
     }
 
+
+    // Handle a message that has no remaining values to insert.
     void log(const char* s) noexcept
     {
         while (*s)
@@ -168,6 +189,7 @@ public:
                 }
                 else
                 {
+                    // A single percent sign still needs an argument.
                     assert(
                         false &&
                         "Missing argument for Logger::log()"

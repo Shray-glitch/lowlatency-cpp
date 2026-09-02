@@ -5,9 +5,11 @@
 
 int main()
 {
+    // The logger starts its background thread here.
     Logger logger("logger_demo.log");
 
 
+    // Values of different supported types.
     char c = 'A';
     int id = 42;
     unsigned long quantity = 500;
@@ -21,6 +23,7 @@ int main()
         "order accepted";
 
 
+    // Each single % is replaced by the next value.
     logger.log(
         "char:% id:% quantity:%\n",
         c,
@@ -48,10 +51,12 @@ int main()
     );
 
 
+    // Two percent signs produce one real percent character.
     logger.log(
         "percent example:100%%\n"
     );
 
 
+    // The destructor waits for queued values before closing the file.
     return 0;
 }
