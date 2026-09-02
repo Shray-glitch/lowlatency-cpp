@@ -385,3 +385,48 @@ if(BUILD_TESTING)
     )
 
 endif()
+
+
+
+# ============================================================
+# Thread utility test
+# ============================================================
+
+if(BUILD_TESTING)
+
+    add_executable(
+        thread_utils_test
+        tests/thread_utils_test.cpp
+    )
+
+    target_include_directories(
+        thread_utils_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        thread_utils_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    # The utility creates and optionally pins a std::thread.
+    target_link_libraries(
+        thread_utils_test
+        PRIVATE
+            Threads::Threads
+    )
+
+    add_test(
+        NAME thread_utils_test
+        COMMAND thread_utils_test
+    )
+
+    set_tests_properties(
+        thread_utils_test
+        PROPERTIES
+            TIMEOUT 10
+    )
+
+endif()
