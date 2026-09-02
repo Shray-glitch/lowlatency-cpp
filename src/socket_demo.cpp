@@ -160,10 +160,22 @@ int main()
         server_recv_finished_callback;
 
 
-    server.listen(
-        iface,
-        PORT
-    );
+    // listen() creates epoll, creates the listener socket, binds it to the
+    // interface and port, and registers it for connection notifications.
+    if (!server.listen(
+            iface,
+            PORT
+        ))
+    {
+        std::cerr
+            << "Failed to start TCP server on "
+            << iface
+            << ':'
+            << PORT
+            << '\n';
+
+        return 1;
+    }
 
 
     // ========================================================

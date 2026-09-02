@@ -3,7 +3,6 @@
 #include "socket_utils.hpp"
 
 #include <algorithm>
-#include <cassert>
 #include <cerrno>
 
 #include <sys/socket.h>
@@ -13,6 +12,8 @@
 namespace
 {
 
+// Add a socket only once. epoll may report several event flags for the same
+// descriptor, but the server should process that socket once per collection.
 void addUnique(
     std::vector<TCPSocket*>& sockets,
     TCPSocket* socket)
@@ -112,6 +113,15 @@ void TCPServer::destroy() noexcept
 bool TCPServer::epollAdd(
     TCPSocket* socket)
 {
+    if (
+        efd_ < 0 ||
+        socket == nullptr ||
+        socket->fd_ < 0
+    )
+    {
+        return false;
+    }
+
     epoll_event event{};
 
 
@@ -213,7 +223,7 @@ void TCPServer::del(
 // Start listener
 // ============================================================
 
-void TCPServer::listen(
+bool TCPServer::listen(
     const std::string& iface,
     int port)
 {
@@ -225,10 +235,14 @@ void TCPServer::listen(
     efd_ =
         ::epoll_create1(0);
 
-    assert(
-        efd_ >= 0 &&
-        "epoll_create1() failed"
-    );
+    if (efd_ < 0)
+    {
+        logger_.log(
+            "TCPServer epoll_create1 failed\n"
+        );
+
+        return false;
+    }
 
 
     // Empty IP means createSocket() resolves
@@ -244,18 +258,32 @@ void TCPServer::listen(
         );
 
 
-    assert(
-        listener_fd >= 0 &&
-        "Failed to create listener socket"
-    );
+    if (listener_fd < 0)
+    {
+        logger_.log(
+            "TCPServer failed to create listener iface:% port:%\n",
+            iface,
+            port
+        );
+
+        destroy();
+        return false;
+    }
 
 
-    assert(
-        epollAdd(
+    if (!epollAdd(
             &listener_socket_
-        ) &&
-        "Failed to add listener to epoll"
-    );
+        ))
+    {
+        logger_.log(
+            "TCPServer failed to add listener to epoll\n"
+        );
+
+        destroy();
+        return false;
+    }
+
+    return true;
 }
 
 
@@ -265,6 +293,11 @@ void TCPServer::listen(
 
 void TCPServer::poll() noexcept
 {
+    // listen() must successfully create the epoll descriptor first.
+    if (efd_ < 0) {
+        return;
+    }
+
     // --------------------------------------------------------
     // Remove sockets that were marked disconnected
     // during the previous pass.
@@ -512,6 +545,11 @@ void TCPServer::poll() noexcept
 
 void TCPServer::sendAndRecv() noexcept
 {
+    // A failed or destroyed server has no connections to process.
+    if (efd_ < 0) {
+        return;
+    }
+
     bool received_anything =
         false;
 

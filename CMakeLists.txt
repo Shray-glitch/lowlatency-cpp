@@ -525,3 +525,53 @@ if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
     )
 
 endif()
+
+
+
+# ============================================================
+# TCP server loopback integration test
+# ============================================================
+
+if(BUILD_TESTING AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+
+    add_executable(
+        tcp_server_test
+        tests/tcp_server_test.cpp
+        src/tcp_server.cpp
+        src/tcp_socket.cpp
+        src/socket_utils.cpp
+        src/logger.cpp
+    )
+
+    target_include_directories(
+        tcp_server_test
+        PRIVATE
+            ${PROJECT_SOURCE_DIR}/include
+    )
+
+    target_compile_features(
+        tcp_server_test
+        PRIVATE
+            cxx_std_20
+    )
+
+    # TCPServer uses Linux epoll and Logger uses a background thread.
+    target_link_libraries(
+        tcp_server_test
+        PRIVATE
+            Threads::Threads
+    )
+
+    add_test(
+        NAME tcp_server_test
+        COMMAND tcp_server_test
+    )
+
+    # Bound the event-loop retry period if a networking regression occurs.
+    set_tests_properties(
+        tcp_server_test
+        PROPERTIES
+            TIMEOUT 15
+    )
+
+endif()
