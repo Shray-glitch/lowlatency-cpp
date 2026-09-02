@@ -30,3 +30,5 @@ Thumbs.db
 
 # Local scaffolding script
 init_cpp.sh
+# Additional build directory
+build-all/
