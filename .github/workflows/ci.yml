@@ -1,0 +1,46 @@
+# Name shown on the GitHub Actions page.
+name: C++ CI
+
+# Run the checks when code is pushed to these branches,
+# or when a pull request targets main.
+on:
+  push:
+    branches:
+      - main
+      - project-hardening
+  pull_request:
+    branches:
+      - main
+
+# The workflow only needs permission to read repository files.
+permissions:
+  contents: read
+
+jobs:
+  build-and-test:
+    # Stop the job if it unexpectedly hangs.
+    timeout-minutes: 10
+
+    # Use a Linux machine because the networking code uses epoll
+    # and other Linux-specific APIs.
+    runs-on: ubuntu-24.04
+
+    steps:
+      # Download the repository files onto the CI machine.
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      # Create a Release build and enable the test targets.
+      - name: Configure CMake
+        run: >
+          cmake -S . -B build
+          -DCMAKE_BUILD_TYPE=Release
+          -DBUILD_TESTING=ON
+
+      # Compile the demos and all test executables.
+      - name: Build
+        run: cmake --build build --parallel
+
+      # Run all eight tests and print details if one fails.
+      - name: Run tests
+        run: ctest --test-dir build --output-on-failure
