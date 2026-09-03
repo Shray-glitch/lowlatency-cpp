@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.20)
 
 # Name of the overall project.
-# This project contains all Chapter 4 low-latency building blocks.
+# This project contains reusable low-latency C++ building blocks.
 project(
     low_latency_chapter4
     LANGUAGES CXX

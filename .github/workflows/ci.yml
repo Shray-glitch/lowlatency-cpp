@@ -7,7 +7,6 @@ on:
   push:
     branches:
       - main
-      - project-hardening
   pull_request:
     branches:
       - main
