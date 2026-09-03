@@ -1,6 +1,6 @@
 # Low-Latency C++ Building Blocks
 
-[![C++ CI](https://github.com/Shray-glitch/lowlatency-cpp/actions/workflows/ci.yml/badge.svg?branch=project-hardening)](https://github.com/Shray-glitch/lowlatency-cpp/actions/workflows/ci.yml)
+[![C++ CI](https://github.com/Shray-glitch/lowlatency-cpp/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/Shray-glitch/lowlatency-cpp/actions/workflows/ci.yml)
 
 A C++20 project exploring reusable building blocks for latency-sensitive systems, including CPU affinity, preallocated memory, inter-thread communication, asynchronous logging, and non-blocking TCP networking with Linux `epoll`.
 
